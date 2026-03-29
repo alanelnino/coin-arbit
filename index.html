@@ -166,7 +166,14 @@
       const cleanPair = pair.trim().toLowerCase();
       const url = `http://crypto.papamoi.my.id/fetch.php?pair=${cleanPair}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        method: "GET",
+        referrerPolicy: "no-referrer",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
       if (!res.ok) {
         throw new Error(`Gagal fetch ${cleanPair}: HTTP ${res.status}`);
       }
