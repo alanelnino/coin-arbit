@@ -103,7 +103,7 @@
     let timer = null;
 
     async function fetchDepth(pair) {
-      const url = `https://indodax.com/api/${pair}/depth`;
+      const url = `https://coin-arbit.mjniuz-37d.workers.dev?pair=${pair}`;
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error(`Gagal fetch ${pair}: HTTP ${res.status}`);
