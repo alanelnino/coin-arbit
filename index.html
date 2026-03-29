@@ -163,7 +163,7 @@
 
     async function fetchTicker(pair) {
       const cleanPair = pair.trim().toLowerCase();
-      const url = `https://indodax.com/api/${cleanPair}/ticker`;
+      const url = `https://indodax.com/api/ticker/${cleanPair}`;
 
       const res = await fetch(url);
       if (!res.ok) {
