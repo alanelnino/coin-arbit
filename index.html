@@ -7,13 +7,22 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 900px;
+      max-width: 920px;
       margin: 24px auto;
       padding: 16px;
       background: #111;
       color: #eee;
     }
-    h1 { margin-bottom: 8px; }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      color: #aaa;
+      font-size: 13px;
+    }
+
     .box {
       background: #1b1b1b;
       border: 1px solid #333;
@@ -21,8 +30,14 @@
       padding: 16px;
       margin-bottom: 16px;
     }
-    label { display: block; margin: 10px 0 4px; }
-    input, button, select {
+
+    label {
+      display: block;
+      margin: 10px 0 4px;
+      font-size: 14px;
+    }
+
+    input, button {
       width: 100%;
       padding: 10px;
       border-radius: 8px;
@@ -31,64 +46,108 @@
       color: #fff;
       box-sizing: border-box;
     }
+
     button {
       cursor: pointer;
       background: #2f6fed;
       border: none;
       margin-top: 14px;
+      font-weight: bold;
     }
-    button:hover { opacity: 0.9; }
+
+    button:hover {
+      opacity: 0.92;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
+
     .result {
       font-size: 15px;
       line-height: 1.8;
       white-space: pre-line;
     }
-    .profit { color: #59d185; font-weight: bold; }
-    .loss { color: #ff6b6b; font-weight: bold; }
-    .small { font-size: 12px; color: #aaa; }
+
+    .profit {
+      color: #59d185;
+      font-weight: bold;
+    }
+
+    .loss {
+      color: #ff6b6b;
+      font-weight: bold;
+    }
+
+    .warn {
+      color: #ffd166;
+      font-weight: bold;
+    }
+
+    .footer-note {
+      font-size: 12px;
+      color: #9a9a9a;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Triangle Arbitrage Calculator - Indodax</h1>
-  <p class="small">
+  <p class="muted">
     Jalur default: IDR → USDT → XRP → IDR
   </p>
 
   <div class="box">
     <div class="grid">
       <div>
-        <label>Modal awal (IDR)</label>
+        <label for="startIdr">Modal awal (IDR)</label>
         <input id="startIdr" type="number" value="1000000" />
       </div>
+
       <div>
-        <label>Fee per transaksi (%)</label>
+        <label for="feePct">Fee per transaksi (%)</label>
         <input id="feePct" type="number" step="0.0001" value="0.3" />
       </div>
+
       <div>
-        <label>Pair 1 (buy USDT dengan IDR)</label>
-        <input id="pair1" type="text" value="usdt_idr" />
+        <label for="pair1">Pair 1 - beli USDT dengan IDR</label>
+        <input id="pair1" type="text" value="usdtidr" />
       </div>
+
       <div>
-        <label>Pair 2 (buy XRP dengan USDT)</label>
-        <input id="pair2" type="text" value="xrp_usdt" />
+        <label for="pair2">Pair 2 - beli XRP dengan USDT</label>
+        <input id="pair2" type="text" value="xrpusdt" />
       </div>
+
       <div>
-        <label>Pair 3 (sell XRP ke IDR)</label>
-        <input id="pair3" type="text" value="xrp_idr" />
+        <label for="pair3">Pair 3 - jual XRP ke IDR</label>
+        <input id="pair3" type="text" value="xrpidr" />
       </div>
+
       <div>
-        <label>Auto refresh (detik)</label>
+        <label for="refreshSec">Auto refresh (detik)</label>
         <input id="refreshSec" type="number" value="3" min="1" />
+      </div>
+
+      <div>
+        <label for="minProfitAlert">Alert minimum net profit (%)</label>
+        <input id="minProfitAlert" type="number" step="0.0001" value="0.2" />
       </div>
     </div>
 
     <button id="calcBtn">Hitung Sekarang</button>
     <button id="toggleAutoBtn">Start Auto Refresh</button>
+    <div class="footer-note">
+      Format pair contoh: <b>btcidr</b>, <b>ethidr</b>, <b>xrpusdt</b>, <b>xrpidr</b>
+    </div>
   </div>
 
   <div class="box">
@@ -102,27 +161,22 @@
 
     let timer = null;
 
-    async function fetchDepth(pair) {
-      const url = `https://coin-arbit.mjniuz-37d.workers.dev?pair=${pair}`;
+    async function fetchTicker(pair) {
+      const cleanPair = pair.trim().toLowerCase();
+      const url = `https://indodax.com/api/${cleanPair}/ticker`;
+
       const res = await fetch(url);
       if (!res.ok) {
-        throw new Error(`Gagal fetch ${pair}: HTTP ${res.status}`);
+        throw new Error(`Gagal fetch ${cleanPair}: HTTP ${res.status}`);
       }
-      return await res.json();
-    }
 
-    function getBestAsk(depth) {
-      // sell/asks = order jual orang lain => harga beli termurah untuk kita
-      const asks = depth.sell || depth.asks;
-      if (!asks || !asks.length) throw new Error("Ask book kosong");
-      return parseFloat(asks[0][0]);
-    }
+      const json = await res.json();
 
-    function getBestBid(depth) {
-      // buy/bids = order beli orang lain => harga jual tertinggi untuk kita
-      const bids = depth.buy || depth.bids;
-      if (!bids || !bids.length) throw new Error("Bid book kosong");
-      return parseFloat(bids[0][0]);
+      if (!json || !json.ticker) {
+        throw new Error(`Respons ticker ${cleanPair} tidak valid`);
+      }
+
+      return json.ticker;
     }
 
     function fmt(n, max = 8) {
@@ -131,27 +185,44 @@
       });
     }
 
+    function toNum(v) {
+      const n = parseFloat(v);
+      if (Number.isNaN(n)) {
+        throw new Error(`Nilai angka tidak valid: ${v}`);
+      }
+      return n;
+    }
+
     async function calculateTriangle() {
       try {
-        const startIdr = parseFloat(document.getElementById("startIdr").value);
-        const feePct = parseFloat(document.getElementById("feePct").value);
+        const startIdr = toNum(document.getElementById("startIdr").value);
+        const feePct = toNum(document.getElementById("feePct").value);
+        const minProfitAlert = toNum(document.getElementById("minProfitAlert").value);
+
         const pair1 = document.getElementById("pair1").value.trim().toLowerCase();
         const pair2 = document.getElementById("pair2").value.trim().toLowerCase();
         const pair3 = document.getElementById("pair3").value.trim().toLowerCase();
 
+        if (!pair1 || !pair2 || !pair3) {
+          throw new Error("Semua pair wajib diisi");
+        }
+
         const fee = feePct / 100;
 
-        resultEl.textContent = "Mengambil order book...";
+        resultEl.textContent = "Mengambil data ticker...";
 
-        const [depth1, depth2, depth3] = await Promise.all([
-          fetchDepth(pair1),
-          fetchDepth(pair2),
-          fetchDepth(pair3)
+        const [ticker1, ticker2, ticker3] = await Promise.all([
+          fetchTicker(pair1),
+          fetchTicker(pair2),
+          fetchTicker(pair3)
         ]);
 
-        const ask1 = getBestAsk(depth1); // usdt_idr
-        const ask2 = getBestAsk(depth2); // xrp_usdt
-        const bid3 = getBestBid(depth3); // xrp_idr
+        // Buy pakai harga jual terendah (sell)
+        const ask1 = toNum(ticker1.sell);
+        const ask2 = toNum(ticker2.sell);
+
+        // Sell pakai harga beli tertinggi (buy)
+        const bid3 = toNum(ticker3.buy);
 
         // Step 1: IDR -> USDT
         let usdt = startIdr / ask1;
@@ -171,15 +242,24 @@
         const grossEdge = bid3 / (ask1 * ask2);
         const netEdge = finalIdr / startIdr;
 
-        const cls = profitIdr >= 0 ? "profit" : "loss";
+        let statusClass = "loss";
+        let statusText = "Rugi / belum layak";
+
+        if (profitPct >= minProfitAlert) {
+          statusClass = "profit";
+          statusText = "Peluang profit";
+        } else if (profitPct >= 0) {
+          statusClass = "warn";
+          statusText = "Profit tipis";
+        }
 
         resultEl.innerHTML = `
 Timestamp: ${new Date().toLocaleString("id-ID")}
 
 Pair:
-1. ${pair1} (ASK) = ${fmt(ask1)}
-2. ${pair2} (ASK) = ${fmt(ask2)}
-3. ${pair3} (BID) = ${fmt(bid3)}
+1. ${pair1} (ASK / sell) = ${fmt(ask1)}
+2. ${pair2} (ASK / sell) = ${fmt(ask2)}
+3. ${pair3} (BID / buy)  = ${fmt(bid3)}
 
 Modal awal:
 IDR ${fmt(startIdr, 2)}
@@ -187,7 +267,7 @@ IDR ${fmt(startIdr, 2)}
 Simulasi:
 IDR -> USDT = ${fmt(usdt)}
 USDT -> XRP = ${fmt(xrp)}
-XRP -> IDR = ${fmt(finalIdr, 2)}
+XRP -> IDR  = ${fmt(finalIdr, 2)}
 
 Gross edge:
 ${fmt(grossEdge, 8)}
@@ -195,7 +275,10 @@ ${fmt(grossEdge, 8)}
 Net edge:
 ${fmt(netEdge, 8)}
 
-<span class="${cls}">Profit/Loss:
+Status:
+<span class="${statusClass}">${statusText}</span>
+
+<span class="${statusClass}">Profit/Loss:
 IDR ${fmt(profitIdr, 2)} (${fmt(profitPct, 4)}%)</span>
         `;
       } catch (err) {
@@ -213,7 +296,11 @@ IDR ${fmt(profitIdr, 2)} (${fmt(profitPct, 4)}%)</span>
         return;
       }
 
-      const refreshSec = Math.max(1, parseInt(document.getElementById("refreshSec").value || "3", 10));
+      const refreshSec = Math.max(
+        1,
+        parseInt(document.getElementById("refreshSec").value || "3", 10)
+      );
+
       calculateTriangle();
       timer = setInterval(calculateTriangle, refreshSec * 1000);
       toggleAutoBtn.textContent = "Stop Auto Refresh";
