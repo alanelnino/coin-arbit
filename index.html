@@ -164,7 +164,7 @@
 
     async function fetchTicker(pair) {
       const cleanPair = pair.trim().toLowerCase();
-      const url = `http://crypto.papamoi.my.id/fetch.php?pair=${cleanPair}`;
+      const url = `https://coin-arbit.mjniuz-37d.workers.dev/?pair=${cleanPair}`;
 
       const res = await fetch(url, {
         method: "GET",
