@@ -2,11 +2,17 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
     const pair = url.searchParams.get("pair");
+    
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
 
     if (!pair) {
       return new Response(JSON.stringify({ error: "pair required" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: corsHeaders
       });
     }
 
@@ -14,28 +20,19 @@ export default {
 
     try {
       const res = await fetch(target, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-          "Accept": "application/json",
-          "Accept-Language": "en-US,en;q=0.9"
-        }
+        headers: corsHeaders
       });
 
       const data = await res.text();
 
       return new Response(data, {
-        headers: {
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-          "Access-Control-Allow-Origin": "*",
-          "Content-Type": "application/json"
-        }
+        headers: corsHeaders
       });
 
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: corsHeaders
       });
     }
   }
