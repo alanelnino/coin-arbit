@@ -10,7 +10,7 @@ export default {
       });
     }
 
-    const target = `https://indodax.com/api/${pair}/depth`;
+    const target = `https://indodax.com/api/ticker/${pair}`;
 
     try {
       const res = await fetch(target, {
